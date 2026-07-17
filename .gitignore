@@ -1,0 +1,12 @@
+# 大文件
+tianyancha.db
+scripts/tianyancha.db
+tianyancha.db.backup*
+output/*.xlsx
+output/*.pdf
+output/*.txt
+
+# Python
+__pycache__/
+*.pyc
+.DS_Store
