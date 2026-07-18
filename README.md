@@ -11,7 +11,7 @@
 | 数据来源 | 天眼查商业查询平台 |
 | 标注范围 | 盐南高新区 + 经开区 |
 | 已标注区域 | 70,528 条 (35.3%) |
-| 联系方式覆盖 | 115,166 条 (57.6%) |
+| 联系方式覆盖 | 145,043 条 (72.5%) |
 
 ## 技能架构
 
@@ -25,6 +25,9 @@
 | `scripts/query_summary_pdf.py` | PDF 汇总报告（按街道+大楼宇维度） | PDF |
 | `scripts/query_pdf.py` | 多条件筛选明细 PDF 报告 | PDF |
 | `scripts/gen_report.py` | HTML 数据治理报告 | HTML |
+| `scripts/gen_quality_report.py` | 数据质量监控报告（趋势 KPI 看板） | HTML |
+| `scripts/backup_db.py` | 数据库自动备份（VACUUM INTO 一致性） | .db |
+| `scripts/verify_backup.py` | 备份恢复演练（验证备份可读性+结构一致性） | — |
 
 ### 数据库
 
@@ -44,6 +47,12 @@ python3 scripts/import_excel.py /path/to/【天眼查】高级搜索YYYYMMDD(...
 ```
 
 导入后自动触发地址标注。
+
+### 标注时不执行治理（快速导入）
+
+```bash
+python3 scripts/import_excel.py /path/to/file.xlsx --no-annotate
+```
 
 ### 查询与报表
 
@@ -82,6 +91,8 @@ python3 scripts/query_pdf.py --region 盐南高新区 --year 2026 --not 个体
 | `--output` | 输出格式（excel/pdf） | `--output excel` |
 | `--group` | 分组统计 | `--group street` |
 | `--limit` | 限制条数 | `--limit 100` |
+| `--type` | 按企业类型筛选 | `--type 有限责任公司` |
+| `--scale` | 按企业规模筛选 | `--scale 小型` |
 
 ### Excel 输出规范
 
@@ -104,6 +115,43 @@ python3 scripts/query_pdf.py --region 盐南高新区 --year 2026 --not 个体
 
 **经开区（7 栋）**：未来科技城、全民创业园（步凤）、涌鑫经贸中心、韩资工业园、光电产业园、新能源汽车产业园、盐城综合保税区
 
+## 数据治理体系
+
+项目参考 DCMM（数据管理能力成熟度模型）和 GB/T 34960《数据治理规范》建设了完整的数据治理体系。
+
+### 数据治理字段
+
+| 治理字段 | 说明 | 填充率 | 来源 |
+|---------|------|--------|------|
+| `region` | 区县（项目定义：盐南高新区 / 经开区） | 35.3% | county + 地址关键词匹配 |
+| `street` | 街道/乡镇（7 个预设值） | 28.4% | 地址关键词 + 大楼宇映射 |
+| `building` | 大楼宇/产业园（27 栋，配置化管理） | 9.0% | 地址关键词匹配 |
+| `small_building` | 小楼宇/楼号（27 个独立匹配函数） | 8.6% | 正则提取 |
+
+### 治理工具
+
+| 工具 | 说明 |
+|------|------|
+| `annotate_rules.yaml` | 标注规则配置（27 栋楼宇 + 7 个街道 + 10 个街道修正） |
+| `scripts/annotate_all.py` | 全量标注流水线（8 步：清空→区县→街道→补匹配→大楼宇→强制覆盖→街道修正→小楼宇） |
+| `output/数据质量报告_latest.html` | 每日自动生成的质量 KPI 看板 |
+| `governance/` | 治理制度文档（规则变更记录 / 问题登记 / 定期检查 / 归档策略） |
+
+### 数据质量保障
+
+- **唯一性**：`unified_social_credit_code` 唯一索引 + UPSERT 去重，重复率 0%
+- **一致性**：`Step 6-7` 强制覆盖保证大楼宇→街道→区县映射链条一致
+- **时效性**：最新数据截至采集日，2026 年新注册 11,441 条
+- **审计追踪**：`audit_log` 表 + 触发器，自动记录 building 字段变更历史
+- **完整性校验**：`import_excel.py` 导入时自动校验 `region`/`street` 值域
+
+### 定期任务
+
+| 时间 | 任务 | 脚本 |
+|------|------|------|
+| 每天 02:30 | 生成质量监控报告 | `scripts/gen_quality_report.py` |
+| 每天 03:00 | 数据库备份（保留 14 份） | `scripts/backup_db.py --keep 14` |
+
 ## 依赖
 
 - Python 3.8+
@@ -111,6 +159,7 @@ python3 scripts/query_pdf.py --region 盐南高新区 --year 2026 --not 个体
 - openpyxl（Excel 导出）
 - reportlab（PDF 生成）
 - Pillow
+- PyYAML（annotate_rules.yaml 解析）
 
 ## 项目来源
 
