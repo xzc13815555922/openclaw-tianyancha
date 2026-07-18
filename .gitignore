@@ -2,6 +2,11 @@
 tianyancha.db
 scripts/tianyancha.db
 tianyancha.db.backup*
+
+# 数据库备份
+backups/*.db
+
+# 输出产物
 output/*.xlsx
 output/*.pdf
 output/*.txt
