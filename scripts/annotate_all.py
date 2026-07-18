@@ -23,6 +23,7 @@
 import sqlite3
 import re
 import sys
+from pathlib import Path
 import yaml
 
 # 规则配置文件路径
@@ -32,7 +33,6 @@ def load_rules():
     """从 YAML 加载标注规则"""
     with open(RULES_PATH, "r") as f:
         return yaml.safe_load(f)
-from pathlib import Path
 
 DB_PATH = Path(__file__).parent.parent / "tianyancha.db"
 
