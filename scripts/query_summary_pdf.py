@@ -34,7 +34,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
-DB_PATH = Path(__file__).parent.parent / "tianyancha.db"
+from db import get_connection
 OUTPUT_DIR = Path(__file__).parent.parent / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
@@ -276,7 +276,7 @@ def auto_fit_table(data, col_widths, min_font=7, max_font=9):
 
 def generate_pdf():
     """生成 PDF 报告"""
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = get_connection()
 
     # 动态获取数据截止时间(数据库最新注册时间)
     cutoff_date = conn.execute("SELECT MAX(establishment_date) FROM enterprise_detail WHERE establishment_date != '' AND establishment_date IS NOT NULL").fetchone()[0] or '未知'

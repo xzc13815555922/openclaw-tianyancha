@@ -24,6 +24,9 @@ import sqlite3
 from pathlib import Path
 import pandas as pd
 
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
+from db import get_connection
 DB_PATH = Path(__file__).parent.parent / "tianyancha.db"
 
 # ── 列名映射（天眼查 Excel → DB字段）─────────────────────────────
@@ -113,7 +116,7 @@ def import_excel(excel_path: Path, force: bool = False):
         from datetime import date
         collected_date = str(date.today())
 
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = get_connection()
     cursor = conn.cursor()
 
     # Step 2: UPSERT

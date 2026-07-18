@@ -13,7 +13,7 @@ outputs:
 
 ## 数据概况
 - 数据库：`~/.openclaw/plugin-skills/tianyancha/tianyancha.db`
-- 主表：`enterprise_detail`（45列，约117,442条）
+- 主表：`enterprise_detail`（45列，200,001条）
 - 数据治理字段：region（区县）、street（街道）、building（大楼宇）、small_building（小楼宇）、account_manager（客户经理）
 - 标注范围：仅限盐南高新区 + 经开区（其他区县不计入统计）
 

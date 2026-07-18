@@ -8,7 +8,7 @@
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent.parent / "tianyancha.db"
+from db import get_connection
 BACKUP_DIR = Path(__file__).parent.parent / "backups"
 
 def verify():

@@ -40,7 +40,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
-DB_PATH = Path(__file__).parent.parent / "tianyancha.db"
+from db import get_connection
 OUTPUT_DIR = Path(__file__).parent.parent / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
@@ -152,7 +152,7 @@ def build_where_clause(filters):
 
 def query(filters=None, group_by=None, limit=None):
     """执行查询"""
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = get_connection()
     
     if filters:
         conditions, params = build_where_clause(filters)

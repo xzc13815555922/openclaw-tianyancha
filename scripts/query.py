@@ -51,7 +51,7 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from datetime import datetime
 
-DB_PATH = Path(__file__).parent.parent / "tianyancha.db"
+from db import get_connection
 OUTPUT_DIR = Path(__file__).parent.parent / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
@@ -205,7 +205,7 @@ def query(filters=None, group_by=None, limit=None, is_company=False, exclude_key
     if group_by and group_by not in ALLOWED_GROUP_BY:
         raise ValueError(f"不支持的分组字段: {group_by}，允许: {sorted(ALLOWED_GROUP_BY)}")
 
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = get_connection()
     try:
         where_parts, params = build_where_clause(filters) if filters else ([], [])
 

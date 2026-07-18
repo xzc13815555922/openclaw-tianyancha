@@ -4,7 +4,7 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime
 
-DB = Path.home() / '.openclaw/plugin-skills/tianyancha/tianyancha.db'
+DB = Path(__file__).parent.parent / "tianyancha.db"
 conn = sqlite3.connect(str(DB))
 
 # 动态获取数据截止时间（数据库最新注册时间）
@@ -125,7 +125,7 @@ output = '\n'.join(report)
 print(output)
 
 # 保存到文件
-output_dir = Path.home() / '.openclaw/plugin-skills/tianyancha/output'
+output_dir = Path(__file__).parent.parent / "output"
 output_dir.mkdir(exist_ok=True)
 output_path = output_dir / '数据治理汇总报告.txt'
 with open(output_path, 'w', encoding='utf-8') as f:

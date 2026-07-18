@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 
-DB_PATH = Path(__file__).parent.parent / "tianyancha.db"
+from db import get_connection
 OUTPUT_DIR = Path(__file__).parent.parent / "output"
 HISTORY_FILE = OUTPUT_DIR / ".quality_history.json"
 OUTPUT_DIR.mkdir(exist_ok=True)
@@ -197,7 +197,7 @@ fields.forEach(f => {{
     return path
 
 def main():
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = get_connection()
     total, metrics = collect_metrics(conn)
     conn.close()
     
