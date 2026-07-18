@@ -27,6 +27,7 @@
 
 import sys
 import sqlite3
+import os
 from pathlib import Path
 from datetime import datetime
 
@@ -292,6 +293,22 @@ def generate_pdf(result, title, filters_desc=""):
     doc.build(elements)
     return output_path
 
+def _parse_int(raw, name, lo=None, hi=None):
+    """严格整数解析 + 范围检查"""
+    try:
+        v = int(raw)
+    except (TypeError, ValueError):
+        print(f"❌ {name} 参数必须是整数，收到: {raw!r}", file=sys.stderr)
+        sys.exit(2)
+    if lo is not None and v < lo:
+        print(f"❌ {name} 参数必须 ≥ {lo}，收到: {v}", file=sys.stderr)
+        sys.exit(2)
+    if hi is not None and v > hi:
+        print(f"❌ {name} 参数必须 ≤ {hi}，收到: {v}", file=sys.stderr)
+        sys.exit(2)
+    return v
+
+
 def main():
     filters = []
     group_by = None
@@ -318,15 +335,18 @@ def main():
             filters.append(("small_building", "=", args[i+1]))
             i += 2
         elif arg == "--year":
-            filters.append(("establishment_date", "year_eq", args[i+1]))
+            year_v = _parse_int(args[i+1], "--year", lo=1900, hi=2100)
+            filters.append(("establishment_date", "year_eq", year_v))
             filters_desc_parts.append(f"成立年份={args[i+1]}")
             i += 2
         elif arg == "--month":
-            filters.append(("establishment_date", "month_eq", args[i+1]))
+            month_v = _parse_int(args[i+1], "--month", lo=1, hi=12)
+            filters.append(("establishment_date", "month_eq", month_v))
             filters_desc_parts.append(f"月份={args[i+1]}")
             i += 2
         elif arg == "--from-month":
-            filters.append(("establishment_date", "month_gte", args[i+1]))
+            from_month_v = _parse_int(args[i+1], "--from-month", lo=1, hi=12)
+            filters.append(("establishment_date", "month_gte", from_month_v))
             filters_desc_parts.append(f"{args[i+1]}月起")
             i += 2
         elif arg == "--type":
@@ -344,10 +364,13 @@ def main():
             group_by = args[i+1]
             i += 2
         elif arg == "--limit":
-            limit = int(args[i+1])
+            limit = _parse_int(args[i+1], "--limit", lo=1)
             i += 2
         else:
-            i += 1
+            print(f"❌ 未识别的参数: {arg}", file=sys.stderr)
+            print(f"   已识别参数: --region --street --building --small_building", file=sys.stderr)
+            print(f"                  --year --month --from-month --not --type --scale --group --limit", file=sys.stderr)
+            sys.exit(2)
     
     filters_desc = " | ".join(filters_desc_parts) if filters_desc_parts else "全部数据"
     

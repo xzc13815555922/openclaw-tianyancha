@@ -21,6 +21,7 @@ Page 3: 按大楼宇汇总
 """
 
 import sqlite3
+import os
 from pathlib import Path
 from datetime import datetime
 
@@ -48,15 +49,44 @@ def check_table_width(col_widths, label=""):
         return False
     return True
 
-# 注册中文字体
+# 注册中文字体（跨平台搜索，macOS / Linux / Windows）
+_CHINESE_FONT_CANDIDATES = [
+    # macOS
+    '/System/Library/Fonts/PingFang.ttc',
+    '/System/Library/Fonts/STHeiti Light.ttc',
+    '/System/Library/Fonts/Hiragino Sans GB.ttc',
+    # Linux (apt install fonts-noto-cjk-extra)
+    '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+    '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
+    '/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc',
+    '/usr/share/fonts/opentype/noto/NotoSansSC-Regular.otf',
+    '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
+    '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc',
+    '/usr/share/fonts/truetype/arphic/uming.ttc',
+    # Windows (CIFS mount in docker / wine)
+    '/usr/share/fonts/truetype/msyh.ttf',
+]
+
 def get_font():
-    for path in ['/System/Library/Fonts/PingFang.ttc', '/System/Library/Fonts/STHeiti Light.ttc', '/System/Library/Fonts/Hiragino Sans GB.ttc']:
+    for path in _CHINESE_FONT_CANDIDATES:
         if Path(path).exists():
             try:
                 pdfmetrics.registerFont(TTFont('Chinese', path))
                 return 'Chinese'
             except:
                 pass
+    # 尝试 glob 扫描系统字体目录
+    import glob
+    for dir_path in ['/usr/share/fonts', '/System/Library/Fonts', os.path.expanduser('~/.fonts')]:
+        for ext in ['*.ttc', '*.ttf', '*.otf']:
+            for found in glob.glob(os.path.join(dir_path, '**', ext), recursive=True):
+                try:
+                    pdfmetrics.registerFont(TTFont('Chinese', found))
+                    return 'Chinese'
+                except:
+                    pass
+    print("⚠️ 未找到中文字体，PDF中文将显示为方框")
+    print("   Linux: apt install fonts-noto-cjk-extra")
     return 'Helvetica'
 
 CHINESE_FONT = get_font()
@@ -71,56 +101,94 @@ styles = {
 
 PHONE_CONDITION = "AND LENGTH(mobile_phone) = 11 AND mobile_phone GLOB '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'"
 
-def get_stats(conn, region=None, street=None, building=None, is_company=None, year=None):
-    """获取统计数据,返回 (总数, 有电话数)"""
-    conditions = ["region IN ('盐南高新区', '经开区')"]
-    params = []
+# ── 批量统计查询（替代原多次独立查询）────────────────────────────────
 
-    if region:
-        conditions.append("region = ?")
-        params.append(region)
-    if street:
-        conditions.append("street = ?")
-        params.append(street)
-    if building:
-        conditions.append("building = ?")
-        params.append(building)
-    if is_company == True:
-        conditions.append("(enterprise_name NOT LIKE '%个体%' AND enterprise_type NOT LIKE '%个体%')")
-    elif is_company == False:
-        conditions.append("(enterprise_name LIKE '%个体%' OR enterprise_type LIKE '%个体%')")
-    if year:
-        conditions.append("SUBSTR(establishment_date, 1, 4) = ?")
-        params.append(str(year))
+STATS_KEYS = {
+    "total_company": (True, None),
+    "phone_company": (True, None, True),
+    "new_company_2026": (True, 2026),
+    "phone_new_company_2026": (True, 2026, True),
+    "total_individual": (False, None),
+    "phone_individual": (False, None, True),
+    "new_individual_2026": (False, 2026),
+    "phone_new_individual_2026": (False, 2026, True),
+}
 
-    where = "WHERE " + " AND ".join(conditions)
 
-    total = conn.execute(f"SELECT COUNT(*) FROM enterprise_detail {where}", params).fetchone()[0]
-    with_phone = conn.execute(f"SELECT COUNT(*) FROM enterprise_detail {where} {PHONE_CONDITION}", params).fetchone()[0]
-    return total, with_phone
+def _batch_query(conn, groups):
+    """
+    批量查询：一次 SQL 查询返回多分组统计
+    groups: [(group_cols, group_vals), ...]
+        group_cols: ['region'] 或 ['region', 'street'] 或 ['building']
+        group_vals: ('盐南高新区',) 或 ('盐南高新区', '黄海街道') 或 ('金融城',)
+    返回 {group_key: {stat_key: count}}
+    """
+    if not groups:
+        return {}
+
+    base_cond = "region IN ('盐南高新区', '经开区')"
+
+    result_map = {}
+
+    for group_cols, group_vals in groups:
+        filter_conds = [base_cond]
+        for col, val in zip(group_cols, group_vals):
+            filter_conds.append(f"{col} = ?")
+        filter_where = " AND ".join(filter_conds)
+
+        group_key = tuple(group_vals)
+        result_map[group_key] = {}
+
+        for stat_key, (is_company, year, *rest) in STATS_KEYS.items():
+            need_phone = bool(rest and rest[0])
+            conds = [filter_where]
+            params = list(group_vals)
+
+            if is_company:
+                conds.append("(enterprise_name NOT LIKE '%个体%' AND enterprise_type NOT LIKE '%个体%')")
+            else:
+                conds.append("(enterprise_name LIKE '%个体%' OR enterprise_type LIKE '%个体%')")
+
+            if year:
+                conds.append("SUBSTR(establishment_date, 1, 4) = ?")
+                params.append(str(year))
+
+            where = " WHERE " + " AND ".join(conds)
+
+            if need_phone:
+                sql = f"SELECT COUNT(*) FROM enterprise_detail {where} AND LENGTH(mobile_phone) = 11 AND mobile_phone GLOB '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'"
+            else:
+                sql = f"SELECT COUNT(*) FROM enterprise_detail {where}"
+
+            result_map[group_key][stat_key] = conn.execute(sql, params).fetchone()[0]
+
+    return result_map
+
 
 def query_region_stats(conn):
-    """按区县统计"""
+    """按区县统计（批量查询）"""
     regions = ['盐南高新区', '经开区']
+    groups = [(['region'], (r,)) for r in regions]
+    batch = _batch_query(conn, groups)
+
     results = []
-    for region in regions:
-        total_company, phone_company = get_stats(conn, region=region, is_company=True)
-        new_company_2026, _ = get_stats(conn, region=region, is_company=True, year=2026)
-        total_individual, phone_individual = get_stats(conn, region=region, is_company=False)
-        new_individual_2026, _ = get_stats(conn, region=region, is_company=False, year=2026)
+    for r in regions:
+        k = (r,)
+        d = batch.get(k, {})
         results.append({
-            'region': region,
-            'total_company': total_company,
-            'phone_company': phone_company,
-            'new_company_2026': new_company_2026,
-            'total_individual': total_individual,
-            'phone_individual': phone_individual,
-            'new_individual_2026': new_individual_2026,
+            'region': r,
+            'total_company': d.get('total_company', 0),
+            'phone_company': d.get('phone_company', 0),
+            'new_company_2026': d.get('new_company_2026', 0),
+            'total_individual': d.get('total_individual', 0),
+            'phone_individual': d.get('phone_individual', 0),
+            'new_individual_2026': d.get('new_individual_2026', 0),
         })
     return results
 
+
 def query_street_stats(conn):
-    """按街道统计"""
+    """按街道统计（批量查询）"""
     streets = [
         ('盐南高新区', '黄海街道'),
         ('盐南高新区', '新都街道'),
@@ -130,27 +198,28 @@ def query_street_stats(conn):
         ('经开区', '新城街道'),
         ('经开区', '步凤镇'),
     ]
+    groups = [(['region', 'street'], (r, s)) for r, s in streets]
+    batch = _batch_query(conn, groups)
 
     results = []
     for region, street in streets:
-        total_company, phone_company = get_stats(conn, region=region, street=street, is_company=True)
-        new_company_2026, _ = get_stats(conn, region=region, street=street, is_company=True, year=2026)
-        total_individual, phone_individual = get_stats(conn, region=region, street=street, is_company=False)
-        new_individual_2026, _ = get_stats(conn, region=region, street=street, is_company=False, year=2026)
+        k = (region, street)
+        d = batch.get(k, {})
         results.append({
             'region': region,
             'street': street,
-            'total_company': total_company,
-            'phone_company': phone_company,
-            'new_company_2026': new_company_2026,
-            'total_individual': total_individual,
-            'phone_individual': phone_individual,
-            'new_individual_2026': new_individual_2026,
+            'total_company': d.get('total_company', 0),
+            'phone_company': d.get('phone_company', 0),
+            'new_company_2026': d.get('new_company_2026', 0),
+            'total_individual': d.get('total_individual', 0),
+            'phone_individual': d.get('phone_individual', 0),
+            'new_individual_2026': d.get('new_individual_2026', 0),
         })
     return results
 
+
 def query_building_stats(conn):
-    """按大楼宇统计"""
+    """按大楼宇统计（批量查询）"""
     rows = conn.execute("""
         SELECT building, region, street, COUNT(*) as total
         FROM enterprise_detail
@@ -169,25 +238,30 @@ def query_building_stats(conn):
             total DESC
     """).fetchall()
 
+    if not rows:
+        return []
+
+    groups = [(['building'], (row[0],)) for row in rows]
+    batch = _batch_query(conn, groups)
+
     results = []
     for row in rows:
         building, region, street = row[0], row[1], row[2]
-        total_company, phone_company = get_stats(conn, building=building, is_company=True)
-        new_company_2026, _ = get_stats(conn, building=building, is_company=True, year=2026)
-        total_individual, phone_individual = get_stats(conn, building=building, is_company=False)
-        new_individual_2026, _ = get_stats(conn, building=building, is_company=False, year=2026)
+        k = (building,)
+        d = batch.get(k, {})
         results.append({
             'building': building,
             'region': region,
             'street': street,
-            'total_company': total_company,
-            'phone_company': phone_company,
-            'new_company_2026': new_company_2026,
-            'total_individual': total_individual,
-            'phone_individual': phone_individual,
-            'new_individual_2026': new_individual_2026,
+            'total_company': d.get('total_company', 0),
+            'phone_company': d.get('phone_company', 0),
+            'new_company_2026': d.get('new_company_2026', 0),
+            'total_individual': d.get('total_individual', 0),
+            'phone_individual': d.get('phone_individual', 0),
+            'new_individual_2026': d.get('new_individual_2026', 0),
         })
     return results
+
 
 def auto_fit_table(data, col_widths, min_font=7, max_font=9):
     """自动调整字体大小确保表格不超出页面"""

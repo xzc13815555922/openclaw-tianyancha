@@ -171,7 +171,7 @@ def import_excel(excel_path: Path, force: bool = False):
     print(f"  采集日期: {collected_date} | 来源: {src_file}")
 
     conn.close()
-    return True
+    return imported  # 返回导入条数
 
 
 def run_annotation():
@@ -180,16 +180,18 @@ def run_annotation():
     script_path = Path(__file__).parent / "annotate_all.py"
     print("\n🔄 执行数据治理标注...")
     result = subprocess.run(['python3', str(script_path)], capture_output=True, text=True)
-    print(result.stdout)
+    print(result.stdout.strip())
     if result.returncode != 0:
         print(f"⚠️ 标注脚本异常: {result.stderr}")
-    return result.returncode == 0
+        return False
+    return True
 
 
 def main():
     if len(sys.argv) < 2:
-        print("用法: python3 import_excel.py <excel文件> [--force]")
+        print("用法: python3 import_excel.py <excel文件> [--force] [--no-annotate]")
         print("  --force: 无确认提示直接执行")
+        print("  --no-annotate: 跳过数据治理标注")
         sys.exit(1)
 
     excel_path = Path(sys.argv[1])
@@ -198,12 +200,17 @@ def main():
         sys.exit(1)
 
     force = '--force' in sys.argv
+    skip_annotate = '--no-annotate' in sys.argv
 
-    ok = import_excel(excel_path, force=force)
-    if ok:
-        run_annotation()
-    else:
-        sys.exit(1)
+    imported = import_excel(excel_path, force=force)
+    if isinstance(imported, (int, float)) and imported > 0 and not skip_annotate:
+        annotate_ok = run_annotation()
+        if not annotate_ok:
+            print("⚠️ 警告: 数据导入成功但标注执行异常，请稍后手动执行:")
+            print(f"   python3 scripts/annotate_all.py")
+            # 不退出，标注失败不应导致导入回滚
+    elif isinstance(imported, (int, float)) and imported == 0:
+        print("⚠️ 未导入任何数据（可能全部已存在或无效）")
 
 
 if __name__ == '__main__':

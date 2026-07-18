@@ -1,0 +1,169 @@
+# 天眼查地址标注规则配置
+# 修改此文件即可生效，无需修改 Python 代码
+# 维护人：执行员小企
+
+# ── 区县匹配规则 ──
+# 注意：区县匹配逻辑在 annotate_all.py 中通过 SQL 实现（county 列判断）
+# 此 YAML 仅维护街道/大楼宇的定义数据
+
+# ── 街道匹配规则 ──
+# street_name: 街道名称
+# keywords: 在注册地址中匹配的关键词
+# region: 该街道所属区域
+streets:
+  - name: 黄海街道
+    keywords: [黄海街道]
+    region: 盐南高新区
+  - name: 新都街道
+    keywords: [新都街道]
+    region: 盐南高新区
+  - name: 科城街道
+    keywords: [科城街道]
+    region: 盐南高新区
+  - name: 新河街道
+    keywords: [新河街道]
+    region: 盐南高新区
+  - name: 伍佑街道
+    keywords: [伍佑街道]
+    region: 盐南高新区
+  - name: 新城街道
+    keywords: [新城街道]
+    region: 经开区
+  - name: 步凤镇
+    keywords: [步凤镇]
+    region: 经开区
+
+# ── 大楼宇匹配规则 ──
+# name: 大楼宇名称
+# keywords: 在注册地址中匹配的关键词
+# region: 所在区县
+# street: 所在街道
+# street_cond: （可选）仅当 street 满足条件时匹配，如 "street=步凤镇"
+# exclude_keywords: （可选）地址中含这些关键词时跳过匹配
+buildings:
+  # === 盐南高新区 ===
+  - name: 金融城
+    keywords: [金融城, 世纪大道5号]
+    region: 盐南高新区
+    street: 新都街道
+  - name: 大数据产业园
+    keywords: [大数据产业园, 创新大厦, 学海路29号]
+    region: 盐南高新区
+    street: 科城街道
+    exclude: [张庄, 盐龙]
+  - name: 新龙广场
+    keywords: [新龙广场, 新弄里, 人民南路38号]
+    region: 盐南高新区
+    street: 科城街道
+  - name: 华邦国际
+    keywords: [华邦国际, 华邦东厦, 华邦西厦]
+    region: 盐南高新区
+    street: 新都街道
+  - name: 紫薇广场
+    keywords: [紫薇广场, 人民南路2号]
+    region: 盐南高新区
+    street: 新都街道
+  - name: 金鹰天地
+    keywords: [金鹰龙湖商业广场, 金鹰聚龙湖购物中心]
+    region: 盐南高新区
+    street: 新都街道
+  - name: 钱江财富广场
+    keywords: [钱江商业街, 钱江财富广场]
+    region: 盐南高新区
+    street: 黄海街道
+  - name: 西伏河园区
+    keywords: [西伏河, 文港南路49号, 文港南路77号, 新园路52号]
+    region: 盐南高新区
+    street: 新河街道
+  - name: 国际创投中心
+    keywords: [国际创投中心, 人民南路5号]
+    region: 盐南高新区
+    street: 新都街道
+  - name: 凤凰文化广场
+    keywords: [凤凰文化广场, 世纪大道611号]
+    region: 盐南高新区
+    street: 新都街道
+  - name: 财富港
+    keywords: [依云小镇商城, 财富港9号楼]
+    region: 盐南高新区
+    street: 科城街道
+  - name: 中信大厦
+    keywords: [中信大厦, 迎宾南路188号]
+    region: 盐南高新区
+    street: 黄海街道
+  - name: 中远商务楼
+    keywords: [开放大道10号, 中远商务楼]
+    region: 盐南高新区
+    street: 黄海街道
+  - name: 新都社区商务楼
+    keywords: [新都社区商务楼, 新都商务楼, 人民南路33号]
+    region: 盐南高新区
+    street: 新都街道
+  - name: 鹿鸣广场
+    keywords: [鹿鸣广场, 人民中路5号]
+    region: 盐南高新区
+    street: 黄海街道
+  - name: 香城美地
+    keywords: [香城美地]
+    region: 盐南高新区
+    street: 新都街道
+  - name: 棕榈泉
+    keywords: [棕榈泉广场]
+    region: 盐南高新区
+    street: 新都街道
+  - name: 丽晶大厦
+    keywords: [丽晶大厦, 解放南路198号丽晶]
+    region: 盐南高新区
+    street: 新都街道
+  - name: 南海流量经济港
+    keywords: [南海流量经济港]
+    region: 盐南高新区
+    street: 伍佑街道
+  - name: 伍佑新型显示产业园
+    keywords: [伍佑新型显示产业园, 伍佑街道构港村]
+    region: 盐南高新区
+    street: 伍佑街道
+  # === 经开区 ===
+  - name: 未来科技城
+    keywords: [未来科技城, 希望大道南路5号]
+    region: 经开区
+    street: 新城街道
+  - name: 全民创业园（步凤）
+    keywords: [全民创业园, 全创路, 步凤镇头灶村全民创业园]
+    region: 经开区
+    street: 步凤镇
+    street_cond: 步凤镇
+  - name: 涌鑫经贸中心
+    keywords: [涌鑫中心, 涌鑫经贸中心, 新都东路31号]
+    region: 经开区
+    street: 新城街道
+  - name: 韩资工业园
+    keywords: [韩资工业园, 希望大道南路1号, 黄山南路65号]
+    region: 经开区
+    street: 新城街道
+  - name: 光电产业园
+    keywords: [新能源汽车产业园, 黄山南路38号]
+    region: 经开区
+    street: 新城街道
+  - name: 新能源汽车产业园
+    keywords: [光电产业园, 希望大道南路15号, 五台山路97号]
+    region: 经开区
+    street: 新城街道
+  - name: 盐城综合保税区
+    keywords: [盐城综合保税区]
+    region: 经开区
+    street: 新城街道
+
+# ── 同一大楼宇多街道修正（强制统一）──
+# 当同一大楼宇被匹配到不同街道时，强制统一为此街道
+street_fix:
+  中远商务楼: 黄海街道
+  丽晶大厦: 新都街道
+  南海流量经济港: 伍佑街道
+  国际创投中心: 新都街道
+  大数据产业园: 科城街道
+  新龙广场: 科城街道
+  紫薇广场: 新都街道
+  西伏河园区: 新河街道
+  财富港: 科城街道
+  鹿鸣广场: 黄海街道
