@@ -159,6 +159,16 @@ def import_excel(excel_path: Path, force: bool = False):
         if imported % 500 == 0:
             print(f"  已导入: {imported}/{total}")
 
+    # 校验治理字段值域（只告警不阻断）
+    VLD_REGION = {'盐南高新区', '经开区', ''}
+    VLD_STREET = {'黄海街道', '新都街道', '科城街道', '新河街道', '伍佑街道', '新城街道', '步凤镇', ''}
+    vld_r = conn.execute("SELECT COUNT(*) FROM enterprise_detail WHERE region NOT IN ('', '盐南高新区', '经开区')").fetchone()[0]
+    vld_s = conn.execute("SELECT COUNT(*) FROM enterprise_detail WHERE street NOT IN ('', '黄海街道', '新都街道', '科城街道', '新河街道', '伍佑街道', '新城街道', '步凤镇')").fetchone()[0]
+    if vld_r > 0:
+        print(f"  ⚠️ region 值域异常: {vld_r} 条不在允许值内")
+    if vld_s > 0:
+        print(f"  ⚠️ street 值域异常: {vld_s} 条不在允许值内")
+
     conn.commit()
 
     # 统计

@@ -1378,6 +1378,16 @@ def _annotate(conn):
     conn.commit()
     print(f"  小楼宇已匹配: {matched}")
 
+    # 设置 updated_at（标记本次被治理过的记录）
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(enterprise_detail)").fetchall()]
+    if 'updated_at' not in cols:
+        conn.execute("ALTER TABLE enterprise_detail ADD COLUMN updated_at TIMESTAMP")
+        conn.commit()
+        conn.execute("UPDATE enterprise_detail SET updated_at = created_at")
+        conn.commit()
+    conn.execute("UPDATE enterprise_detail SET updated_at = datetime('now') WHERE (region != '' OR street != '' OR building != '' OR small_building != '') AND updated_at IS NULL")
+    conn.commit()
+
     # 统计汇总
     print("\n" + "=" * 50)
     print("  标注完成")
