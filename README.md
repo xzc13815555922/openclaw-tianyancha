@@ -28,6 +28,7 @@
 | `scripts/gen_quality_report.py` | 数据质量监控报告（趋势 KPI 看板） | HTML |
 | `scripts/backup_db.py` | 数据库自动备份（VACUUM INTO 一致性） | .db |
 | `scripts/verify_backup.py` | 备份恢复演练（验证备份可读性+结构一致性） | — |
+| `scripts/db.py` | 数据库连接统一模块（9 个脚本共享） | — |
 
 ### 数据库
 
@@ -126,7 +127,7 @@ python3 scripts/query_pdf.py --region 盐南高新区 --year 2026 --not 个体
 | `region` | 区县（项目定义：盐南高新区 / 经开区） | 35.3% | county + 地址关键词匹配 |
 | `street` | 街道/乡镇（7 个预设值） | 28.4% | 地址关键词 + 大楼宇映射 |
 | `building` | 大楼宇/产业园（27 栋，配置化管理） | 9.0% | 地址关键词匹配 |
-| `small_building` | 小楼宇/楼号（27 个独立匹配函数） | 8.6% | 正则提取 |
+| `small_building` | 小楼宇/楼号（dispatch 字典分发 27 个独立匹配函数） | 8.6% | 正则提取 |
 
 ### 治理工具
 
@@ -154,12 +155,46 @@ python3 scripts/query_pdf.py --region 盐南高新区 --year 2026 --not 个体
 
 ## 依赖
 
-- Python 3.8+
-- SQLite 3
-- openpyxl（Excel 导出）
-- reportlab（PDF 生成）
-- Pillow
-- PyYAML（annotate_rules.yaml 解析）
+```bash
+pip install -r requirements.txt
+```
+
+| 库 | 用途 |
+|------|------|
+| `openpyxl` | Excel 导出（query.py） |
+| `reportlab` | PDF 报告生成（query_summary_pdf.py / query_pdf.py） |
+| `Pillow` | PDF 图片支持 |
+| `PyYAML` | 标注规则配置解析（annotate_rules.yaml） |
+
+## 依赖清单
+
+| 需求 | 命令 |
+|------|------|
+| Python 3.8+ | `python3 --version` |
+| SQLite 3 | 内置于 Python 标准库 |
+| Python 库 | `pip install -r requirements.txt` |
+
+## 项目结构
+
+```
+tianyancha/
+├── tianyancha.db              # 数据主库（200,001 条）
+├── annotate_rules.yaml        # 标注规则配置
+├── requirements.txt           # Python 依赖
+├── scripts/
+│   ├── db.py                  # 数据库统一连接
+│   ├── import_excel.py        # 数据导入
+│   ├── annotate_all.py        # 地址标注（8 步流水线）
+│   ├── query.py               # 查询 + Excel 导出
+│   ├── query_summary_pdf.py   # PDF 汇总报告
+│   ├── query_pdf.py           # PDF 明细报告
+│   ├── gen_quality_report.py  # 质量监控看板
+│   ├── gen_report.py          # HTML 报告
+│   ├── backup_db.py           # 自动备份
+│   └── verify_backup.py       # 备份恢复验证
+├── governance/                # 治理制度文档
+└── output/                    # 报告输出产物
+```
 
 ## 项目来源
 
